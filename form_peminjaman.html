@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Peminjaman & Pengembalian Barang</title>
+    <!-- Memanggil Supabase JS Client library via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        /* Desain Kartu Pembungkus */
+.card { 
+    background: #ffffff; 
+    padding: 30px; 
+    border-radius: 10px; 
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); 
+}
+
+/* Desain Utama Tabel */
+table { 
+    width: 100%; 
+    border-collapse: collapse; /* Menghilangkan celah antar garis border */
+    margin-top: 10px; 
+    font-size: 14px; 
+}
+
+/* Desain Garis dan Jarak (Padding) Kolom */
+th, td { 
+    border: 1px solid #e5e7eb; 
+    padding: 10px; 
+    text-align: left; 
+}
+
+/* Desain Baris Judul Tabel (Header) */
+th { 
+    background-color: #f3f4f6; 
+    color: #374151; 
+    font-weight: 600; 
+}
+
+/* Desain Baris Belang-Belang (Zebra Striping) Agar Mudah Dibaca */
+tr:nth-child(even) { 
+    background-color: #f9fafb; 
+}
+
+/* Desain Teks Pemberitahuan Kosong */
+.empty-text { 
+    text-align: center; 
+    color: #6b7280; 
+    font-size: 14px; 
+    margin-top: 10px; 
+}
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background-color: #f3f4f6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .card {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            color: #1d4ed8;
+            margin-top: 0;
+            margin-bottom: 24px;
+            text-align: center;
+            font-weight: 700;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+        }
+        input[type="text"], input[type="date"], select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background-color: #f9fafb;
+            font-size: 14px;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background-color: #fff;
+        }
+        button {
+            width: 100%;
+            background-color: #2563eb;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #1d4ed8;
+        }
+        .btn-cari {
+            background-color: #10b981;
+            margin-bottom: 15px;
+        }
+        .btn-cari:hover {
+            background-color: #059669;
+        }
+        /* Style untuk daftar pengembalian */
+        .item-pinjam {
+            border: 1px solid #e5e7eb;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            background-color: #f9fafb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .item-info p {
+            margin: 4px 0;
+            font-size: 14px;
+        }
+        .btn-kembali {
+            width: auto;
+            background-color: #dc2626;
+            padding: 8px 12px;
+            font-size: 13px;
+        }
+        .btn-kembali:hover {
+            background-color: #b91c1c;
+        }
+        .empty-text {
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- CARD 1: FORM PEMINJAMAN -->
+        <div class="card">
+            <h2>Form Peminjaman Barang</h2>
+            <form id="formPeminjaman">
+                <div class="form-group">
+                    <label for="nama_peminjam">Nama Lengkap</label>
+                    <input type="text" id="nama_peminjam" required placeholder="Masukkan nama lengkap">
+                </div>
+               
+                <div class="form-group">
+                    <label for="barang_id">Pilih Barang</label>
+                    <select id="barang_id" required>
+                        <option value="">Memuat daftar barang...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="keperluan">Keperluan / Alasan Meminjam</label>
+                    <textarea id="keperluan" rows="3" required placeholder="Contoh: Untuk keperluan pembelajaran"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="tanggal_kembali">Rencana Tanggal Kembali</label>
+                    <input type="date" id="tanggal_kembali" required>
+                </div>
+                <button type="submit" id="btnSubmit">Pinjam</button>
+            </form>
+        </div>
+
+        <!-- KARTU DAFTAR PEMINJAM AKTIF -->
+<div class="card">
+    <h2 style="color: #4b5563;">Daftar Peminjam Saat Ini</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Nama Peminjam</th>
+                <th>Barang yang Dipinjam</th>
+            </tr>
+        </thead>
+        <!-- Id 'bodyTabelPeminjam' digunakan oleh JavaScript untuk memasukkan data dari Supabase -->
+        <tbody id="bodyTabelPeminjam">
+            <tr>
+                <td colspan="2" class="empty-text" style="text-align:center;">Memuat data peminjaman...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+
+        <!-- CARD 2: PENGEMBALIAN BARANG DENGAN PENCARIAN NAMA -->
+        <div class="card">
+            <h2 style="color: #dc2626;">Pengembalian Barang</h2>
+            <div class="form-group">
+                <label for="cari_nama">Masukkan Nama Anda untuk cek pinjaman:</label>
+                <input type="text" id="cari_nama" placeholder="Masukkan nama lengkap / panggilan">
+            </div>
+            <button type="button" class="btn-cari" onclick="muatDaftarPinjamanAktif()">Cari Data Pinjaman</button>
+            
+            <div id="daftarPinjaman" class="empty-text">Silakan masukkan nama Anda terlebih dahulu.</div>
+        </div>
+    </div>
+
+    <script>
+        // --- KONFIGURASI SUPABASE ---
+        const SUPABASE_URL = "https://kqaskrcelseumtrtfwrt.supabase.co"; 
+        const SUPABASE_ANON_KEY = "sb_publishable_M9Lggmbdripr3jKShH8W1w_kzB7vLph";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // 1. MUAT DAFTAR BARANG YANG TERSEDIA DI DROPDOWN
+        async function muatDaftarBarang() {
+            const selectBarang = document.getElementById('barang_id');
+            const { data: daftarBarang, error } = await supabaseClient
+                .from('barang')
+                .select('id, nama_barang')
+                .eq('status', 'tersedia');
+
+            if (error) {
+                selectBarang.innerHTML = '<option value="">Gagal memuat barang</option>';
+                return;
+            }
+
+            selectBarang.innerHTML = '<option value="">-- Pilih Barang --</option>';
+            daftarBarang.forEach(barang => {
+                const option = document.createElement('option');
+                option.value = barang.id;
+                option.textContent = barang.nama_barang;
+                selectBarang.appendChild(option);
+            });
+        }
+
+
+
+
+        // 2. CARI BARANG YANG SEDANG DIPINJAM BERDASARKAN NAMA (PENCARIAN FLEKSIBEL)
+        async function muatDaftarPinjamanAktif() {
+            const namaInput = document.getElementById('cari_nama').value.trim();
+            const wadahDaftar = document.getElementById('daftarPinjaman');
+            
+            if (!namaInput) {
+                alert("Silakan isi nama Anda terlebih dahulu!");
+                return;
+            }
+
+            wadahDaftar.innerHTML = 'Mencari data...';
+
+            const { data: listPinjam, error } = await supabaseClient
+                .from('peminjaman')
+                .select(`
+                    id, 
+                    nama_peminjam, 
+                    barang_id,
+                    barang ( nama_barang )
+                `)
+                .eq('status_pinjam', 'dipinjam')
+                .ilike('nama_peminjam', `%${namaInput}%`); 
+
+            if (error) {
+                wadahDaftar.innerHTML = '<p class="empty-text">Gagal memuat data pengembalian.</p>';
+                return;
+            }
+
+            if (listPinjam.length === 0) {
+                wadahDaftar.innerHTML = '<p class="empty-text">Tidak ditemukan barang aktif yang sedang dipinjam dengan nama tersebut.</p>';
+                return;
+            }
+
+            wadahDaftar.innerHTML = '';
+            listPinjam.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'item-pinjam';
+                div.innerHTML = `
+    <div class="item-info">
+        <p><strong>${item.barang?.nama_barang || 'Barang Terhapus'}</strong></p>
+        <p style="color: #6b7280; font-size:12px;">Peminjam: ${item.nama_peminjam} (${item.nim_atau_identitas})</p>
+    </div>
+    <button class="btn-kembali" onclick="prosesKembalikanBarang('${item.id}')">Kembalikan</button>
+`;
+
+                wadahDaftar.appendChild(div);
+            });
+        }
+
+        // 3. FUNGSI UNTUK PROSES PENGEMBALIAN BARANG
+        async function prosesKembalikanBarang(peminjamanId) {
+            if (!confirm("Apakah Anda yakin ingin mengembalikan barang ini?")) return;
+
+            const { error } = await supabaseClient
+                .from('peminjaman')
+                .update({ status_pinjam: 'dikembalikan' })
+                .eq('id', peminjamanId);
+
+            if (error) {
+                alert('Gagal memproses pengembalian: ' + error.message);
+            } else {
+                alert('Barang berhasil dikembalikan!');
+
+    // Perbarui daftar barang
+    await muatDaftarBarang();
+
+    // Perbarui daftar peminjaman milik peminjam
+    await muatDaftarPinjamanAktif();
+
+    // Perbarui tabel "Daftar Peminjam Saat Ini"
+    await perbaruiTabelInformasiPublik();
+            }
+        }
+
+
+        async function perbaruiTabelInformasiPublik() {
+    const tbody = document.getElementById('bodyTabelPeminjam');
+
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="2" class="empty-text" style="text-align:center;">
+                Memuat data peminjaman...
+            </td>
+        </tr>
+    `;
+
+    const { data, error } = await supabaseClient
+        .from('peminjaman')
+        .select(`
+            nama_peminjam,
+            barang:barang_id (
+                nama_barang
+            )
+        `)
+        .eq('status_pinjam', 'dipinjam');
+
+    if (error) {
+        console.error("Error daftar peminjam:", error);
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="2" style="color:red; text-align:center;">
+                    Gagal memuat data: ${error.message}
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    if (!data || data.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="2" class="empty-text" style="text-align:center;">
+                    Tidak ada barang yang sedang dipinjam
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = '';
+
+    data.forEach(item => {
+
+        const namaBarang = Array.isArray(item.barang)
+            ? item.barang[0]?.nama_barang
+            : item.barang?.nama_barang;
+
+        const tr = document.createElement('tr');
+
+        tr.innerHTML = `
+            <td>
+                <strong>${item.nama_peminjam}</strong>
+            </td>
+
+            <td>
+                ${namaBarang || 'Nama Barang Tidak Terbaca'}
+            </td>
+        `;
+
+        tbody.appendChild(tr);
+    });
+}
+
+
+
+
+
+
+       // 4. PROSES SUBMIT PINJAM BARANG (Sudah diperbaiki dengan Auto-Refresh Dropdown)
+document.getElementById('formPeminjaman').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btnSubmit = document.getElementById('btnSubmit');
+    btnSubmit.disabled = true;
+    btnSubmit.innerText = "Mengirim...";
+
+    const nama = document.getElementById('nama_peminjam').value;
+    const barangId = document.getElementById('barang_id').value;
+    const keperluanText = document.getElementById('keperluan').value;
+    const tglKembali = document.getElementById('tanggal_kembali').value;
+
+    const { error } = await supabaseClient
+        .from('peminjaman')
+        .insert([
+            {
+                nama_peminjam: nama,
+                barang_id: barangId,
+                keperluan: keperluanText,
+                tanggal_kembali_rencana: tglKembali,
+                status_pinjam: 'dipinjam'
+            }
+        ]);
+
+    if (error) {
+        alert('Gagal meminjam: ' + error.message);
+        btnSubmit.disabled = false;
+        btnSubmit.innerText = "Pinjam";
+    } else {
+        alert('Peminjaman sukses dicatat!');
+        
+        // A. Reset isian form agar kosong kembali
+        document.getElementById('formPeminjaman').reset();
+        
+        // B. Jeda 500 milidetik memberikan waktu bagi Trigger Supabase untuk menyelesaikan tugasnya
+        setTimeout(async () => {
+            // C. Paksa dropdown mengambil data segar yang sudah ter-update dari database
+            await muatDaftarBarang(); 
+            await perbaruiTabelInformasiPublik();
+            btnSubmit.disabled = false;
+            btnSubmit.innerText = "Pinjam";
+        }, 500);
+    }
+});
+
+        window.onload = () => {
+            muatDaftarBarang();
+            perbaruiTabelInformasiPublik();
+        };
+    </script>
+</body>
+</html>
